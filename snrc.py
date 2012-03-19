@@ -78,3 +78,4 @@ for i in range(len(vals)): vals[i]=str(vals[i])
 f.write(' '.join(vals))
 f.close()
 
+print ','.join(keys)+':'+','.join(vals)

@@ -32,7 +32,6 @@ import bcbio.templates.mako2rst as m2r
 from texttable import Texttable
 
 from bcbio.google import bc_metrics 
-import read_illumina_summary_xml as summ
 from bcbio.pipeline.config_loader import load_config
 from bcbio.scilifelab.google.project_metadata import ProjectMetaData
 
