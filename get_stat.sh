@@ -1,7 +1,8 @@
 #! /bin/bash -l
+
 #SBATCH -A a2010002
 #SBATCH -p node
-#SBATCH -t 3:00:00
+#SBATCH -t 5:00:00
 #SBATCH -J get_stat
 #SBATCH -e get_stat.err
 #SBATCH -o get_stat.out
@@ -11,17 +12,23 @@
 module add bioinfo-tools
 module load samtools
 
-args=("$@")
-path=${args[0]}
-samplenames=(`echo ${args[1]} | tr "," "\n"`)
-readpairs=(`echo ${args[2]} | tr "," "\n"`)
-nr_samps=${#samplenames[*]}
+path=$1 
+echo $path
+
+samplenames=(`echo $2|sed -e 's/,/ /g'`)
+echo ${samplenames[*]}
+readpairs=();j=0; C=(); D=(); E=(); F=(); G=(); H=(); I=(); J=(); L=(); M=()
 
 
-
-j=0; C=(); D=(); E=(); F=(); G=(); H=(); I=(); J=(); L=(); M=()
-echo '{' >> stat.json
+echo '{' > stat.json
 for u in ${samplenames[*]}; do
+	echo $u
+	echo 'hej'
+	counts=`grep 'reads have been filtered out' $path/tophat_out_$u/logs/prep_reads.log|cut -f 4 -d ' '`
+	echo $path/tophat_out_$u/logs/prep_reads.log
+	readpairs[j]=$counts
+	echo $counts
+	samplenames[j]=$u
         arg=$path/tophat_out_${u}/accepted_hits_${u}.bam
         CD=`samtools flagstat $arg |grep read |awk '{print $1}'`
         set -- $CD 

@@ -8,11 +8,9 @@
 #SBATCH --mail-user maya.brandi@scilifelab.se
 #SBATCH --mail-type=ALL
 
+project_id=$1
+config_file=$2
+sample_names=$3
+run_name=$4
 
-args=("$@")
-fcID=${args[0]}
-project_id=${args[1]}
-config_file=${args[2]}
-sample_names=${args[3]}
-
-python /bubo/home/h24/mayabr/glob/useful_scripts/RNA_analys/analysis_report.py $fcID $project_id $sample_names -c $config_file 
+python /bubo/home/h24/mayabr/glob/useful_scripts/RNA_analys_dev2/analysis_report.py $run_name $project_id $sample_names -c $config_file 

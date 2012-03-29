@@ -1,15 +1,15 @@
 #!/bin/bash -l
 
-args=("$@")
-samplenames=(`echo ${args[1]} | tr "," "\n"`)
-path=${args[0]}
-bedfile=${args[2]}
+path=$1
+samplenames=(`echo $2 | tr "," "\n"`)
+bedfile=$3
+
 for i in ${samplenames[*]};do
         echo "#!/bin/bash -l">>$i"_runEver_rd.sh"
         echo "">>$i"_runEver_rd.sh"
-        echo "#SBATCH -A a2010003">>$i"_runEver_rd.sh"
+        echo "#SBATCH -A a2010002">>$i"_runEver_rd.sh"
         echo "#SBATCH -p node">>$i"_runEver_rd.sh"
-        echo "#SBATCH -t 90:00:00">>$i"_runEver_rd.sh"
+        echo "#SBATCH -t 15:00:00">>$i"_runEver_rd.sh"
         echo "#SBATCH -e Ever_rd_$i.err">>$i"_runEver_rd.sh"
         echo "#SBATCH -o Ever_rd_$i.out">>$i"_runEver_rd.sh"
         echo "#SBATCH -J Ever_rd_$i">>$i"_runEver_rd.sh"

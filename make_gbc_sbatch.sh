@@ -1,9 +1,8 @@
 #!/bin/bash -l
 
-args=("$@")
-samplenames=(`echo ${args[1]} | tr "," "\n"`)
-path=${args[0]}
-bedfile=${args[2]}
+path=$1
+samplenames=(`echo $2 | tr "," "\n"`)
+bedfile=$3
 
 for i in ${samplenames[*]};do 
 	echo "#!/bin/bash -l">>$i"_runEver_gbc.sh"

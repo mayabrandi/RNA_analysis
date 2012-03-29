@@ -2,7 +2,7 @@
 """Make RNA-seq analysis for a project
 
 Usage:
-     analysis_reports.py <flowcell id> <project id> <samle names> 
+     analysis_reports.py <run name> <project id> <samle names> 
                 	    [--config-file=<config file>]
 
 Sample names should be give as a comma delimited string.
@@ -66,7 +66,7 @@ ${read_count}
 **RPKM/FPKM values:**
 ${quantifyer}
 
-**Result directories on UPPMAX:** /proj/${uppnex}/INBOX/${runname}/analysis/alignments (BAM files), /proj/${uppnex}/INBOX/${runname}/analysis/quantification (FPKM files)
+**Result directories on UPPMAX:** /proj/${uppnex}/INBOX/${project_id}/analysis/alignments (BAM files), /proj/${uppnex}/INBOX/${project_id}/analysis/quantification (FPKM files)
 
 
 Results
@@ -89,7 +89,7 @@ The number of fragments that are mapped relative to the total number of sequence
 
 **% reads left after dup rem:**
 
-We remove duplicate reads (paired end reads where both mates map to the same loci as both mates in a different paired-end read) because these are likely to be artifacts caused by PCR amplification or over-sequencing. Aligned files in BAM format with duplicates removed can be found in /proj/${uppnex}/INBOX/${runname}/analysis/alignments.
+We remove duplicate reads (paired end reads where both mates map to the same loci as both mates in a different paired-end read) because these are likely to be artifacts caused by PCR amplification or over-sequencing. Aligned files in BAM format with duplicates removed can be found in /proj/${uppnex}/INBOX/${project_id}/analysis/alignments.
 
 
 
@@ -100,7 +100,7 @@ We remove duplicate reads (paired end reads where both mates map to the same loc
 Expression values
 ^^^^^^^^^^^^^^^^^
 
-The /proj/${uppnex}/INBOX/${runname}/analysis/quantification folder contains FPKM values calculated using the Cufflinks program using 
+The /proj/${uppnex}/INBOX/${project_id}/analysis/quantification folder contains FPKM values calculated using the Cufflinks program using 
 ENSEMBL annotation of genes and transcripts for each sample. These files also contain the upper and lower limits of the confidence interval for the FPKM estimate. FPKM values are the paired-end equivalent of RPKM (Reads Per Kilobase per Million mapped reads; the standard measure for gene expression in RNA-seq.)
 
 There is also a single fpkm_table.txt file, which contains all of the FPKM values. This can be opened in Excel or a regular text processing application.
@@ -141,13 +141,8 @@ This table contain information about the extent to which sequences from each sam
 ${Read_Distribution}
 
 """
-
-def main(fcID,project_id,sample_names,config_file):
-	#'m_ohman_11_01' ska vara k har, men stammer inte med M.Ohman_11_01 som i run_info.yaml
-    run=os.listdir('/bubo/proj/a2010002/projects/'+'_'.join(project_id.lower().split('.'))+'/data')[0]
- 
+def main(run,project_id,sample_names,config_file):
     sphinx_defs = []
-
     if config_file:
         config = load_config(config_file)
     else:
@@ -162,7 +157,6 @@ def main(fcID,project_id,sample_names,config_file):
     tmpl = Template(filename=projectfile, lookup=mylookup)
 
     proj_conf = {
-	'fcID':fcID,
         'id' : project_id,
 	'run':run,
         'config' : config,
@@ -269,28 +263,35 @@ def generate_report(proj_conf):
     tab = Texttable()
     json=open('Ever_rd.json','a')
     print >> json, '{'
-    Groups=["Samle","CDS Exons:","5'UTR Exons:","3'UTR Exons:","Intronic region:","TSS up 1kb:","TES down 1kb:"]
-    tab.set_cols_dtype(['t','t','t','t','t','t','t'])
-    tab.add_row(Groups)
+    Groups=["Sample:","CDS Exons:","5'UTR Exons:","3'UTR Exons:","Intronic region:","TSS up 1kb:","TES down 1kb:"]
+
+    tab.set_cols_dtype(['t','t','t','t','t','t','t','t'])
+    tab.add_row(["Sample","CDS Exons","5'UTR Exon","3'UTR Exon","Intron","TSS up 1kb","TES down 1kb","mRNA frac"])
     for i in range(len(proj_conf['samples'])):
-	sample_name=proj_conf['samples'][i]
+        sample_name=proj_conf['samples'][i]
         print >> json, sample_name+': {'
-	row=[sample_name]
+        row=[sample_name]
+        Reads_counts=[]
         f=open('Ever_rd_'+sample_name+'.err','r')
         for line in f:
-	    Group=line.split('\t')[0]
-	    if Group in Groups:
-		if Group=="TES down 1kb:":
+            Group=line.split('\t')[0]
+            if Group in Groups:
+                if Group=="TES down 1kb:":
                     print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())
                 else:
                     print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())+','
-		row.append(str(line.split('\t')[3].strip())+' ')
+                row.append(str(line.split('\t')[3].strip())+' ')
+                Reads_counts.append(float(line.split('\t')[2].strip()))
+        t=os.popen("grep fragments: Ever_rd_"+sample_name+".err|cut -f 3 -d ' '")
+        tot=float(t.readline())
+        frac=(Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot
+        row.append(str(round((Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot,2)))
         tab.add_row(row)
-	f.close()
-	if i==(len(proj_conf['samples'])-1):
-        	print >> json,'}'
-	else:
-		print >> json,'},'
+        f.close()
+        if i==(len(proj_conf['samples'])-1):
+                print >> json,'}'
+        else:
+                print >> json,'},'
     print >> json, '}'
     json.close()
 
@@ -306,8 +307,8 @@ def generate_report(proj_conf):
 ##-----------------------------------------------------------------------------
 if __name__ == "__main__":
     usage = """
-    analysis_reports.py <flowcell id>
-                           [--archive_dir=<archive directory>]
+    analysis_reports.py <run name> <project id> <samle names>
+                           [-c-config-file=<config file>]
 
     For more extensive help type analysis_report.py
 """
