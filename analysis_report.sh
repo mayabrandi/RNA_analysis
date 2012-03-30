@@ -13,4 +13,4 @@ config_file=$2
 sample_names=$3
 run_name=$4
 
-python /bubo/home/h24/mayabr/glob/useful_scripts/RNA_analys_dev2/analysis_report.py $run_name $project_id $sample_names -c $config_file 
+python /bubo/home/h24/mayabr/glob/useful_scripts/RNA_analys/analysis_report.py $run_name $project_id $sample_names -c $config_file 

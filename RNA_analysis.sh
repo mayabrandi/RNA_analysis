@@ -36,37 +36,39 @@ names=`echo $name_list|sed -e 's/ /,/g'`
 ## Merge prevoius runs
 if [ $fcID = "m" ];then
 	## Merge prevoius runs
-	JOBID=`sbatch $WP/merge.sh $path | sed -re 's/.+\s+([0-9]+)/\1/'`
-	DEPENDENCY_MERGE=$DEPENDENCY_MERGE:$JOBID
-	$WP/make_HTseq_cufflinks_sbatch.sh $names $path $gtf_file
-	for name in ${name_list[*]};do
-        	JOBID=`sbatch --dependency=$DEPENDENCY_MERGE HT_cuff_${name}.sh | sed -re 's/.+\s+([0-9]+)/\1/'`
-        	DEPENDENCY_HT_cuff=$DEPENDENCY_HT_cuff:$JOBID
-	done
-	dep=" --dependency=$DEPENDENCY_HT_cuff"
+	#JOBID=`sbatch $WP/merge.sh $path | sed -re 's/.+\s+([0-9]+)/\1/'`
 	path=${path}/merged
+	#DEPENDENCY_MERGE=$DEPENDENCY_MERGE:$JOBID
+	#$WP/make_HTseq_cufflinks_sbatch.sh $names $path $gtf_file
+	#for name in ${name_list[*]};do
+        	#JOBID=`sbatch HT_cuff_${name}.sh | sed -re 's/.+\s+([0-9]+)/\1/'`
+		#JOBID=`sbatch --dependency=$DEPENDENCY_MERGE HT_cuff_${name}.sh | sed -re 's/.+\s+([0-9]+)/\1/'`
+        	#DEPENDENCY_HT_cuff=$DEPENDENCY_HT_cuff:$JOBID
+	#done
+	#dep=" --dependency=$DEPENDENCY_HT_cuff"
 else
 	dep=""
 	path=${path}/$run_name
 fi
 
 # Read Distribution
-$WP/make_rd_sbatch.sh $path $names $bedfile
-$WP/make_gbc_sbatch.sh $path $names $bedfile
-for name in ${name_list[*]};do
-#	sbatch $name"_runEver_gbc.sh"
-        JOBID=`sbatch$dep $name"_runEver_rd.sh" | sed -re 's/.+\s+([0-9]+)/\1/'`
-	DEPENDENCY=$DEPENDENCY:$JOBID
-done
+#$WP/make_rd_sbatch.sh $path $names $bedfile
+#$WP/make_gbc_sbatch.sh $path $names $bedfile
+#for name in ${name_list[*]};do
+##	sbatch $name"_runEver_gbc.sh"
+#        JOBID=`sbatch$dep $name"_runEver_rd.sh" | sed -re 's/.+\s+([0-9]+)/\1/'`
+#	DEPENDENCY=$DEPENDENCY:$JOBID
+#done
 
 ## FPKM_PCAplot, FPKM_heatmap
-JOBID=`sbatch$dep $WP/correl.sh $path $names | sed -re 's/.+\s+([0-9]+)/\1/'`
-DEPENDENCY=$DEPENDENCY:$JOBID
+#JOBID=`sbatch$dep $WP/correl.sh $path $names | sed -re 's/.+\s+([0-9]+)/\1/'`
+#DEPENDENCY=$DEPENDENCY:$JOBID
 
 
 ## Mapping Statistics
-JOBID=`sbatch$dep $WP/get_stat.sh $path $names | sed -re 's/.+\s+([0-9]+)/\1/'`
-DEPENDENCY=$DEPENDENCY:$JOBID
+#JOBID=`sbatch$dep $WP/get_stat.sh $path $names | sed -re 's/.+\s+([0-9]+)/\1/'`
+#DEPENDENCY=$DEPENDENCY:$JOBID
 
 ## Make report
-sbatch --dependency=$DEPENDENCY $WP/analysis_report.sh $project_id $config_file $names $run_name
+sbatch $WP/analysis_report.sh $project_id $config_file $names $run_name
+#sbatch --dependency=$DEPENDENCY $WP/analysis_report.sh $project_id $config_file $names $run_name

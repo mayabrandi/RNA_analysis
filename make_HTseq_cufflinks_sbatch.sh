@@ -22,12 +22,12 @@ for i in ${samplenames[*]};do
         echo "module load cufflinks/1.2.1">>"HT_cuff_$i.sh"
         echo "">>"HT_cuff_$i.sh"
 
-	echo "samtools view $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam |sort > accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
-	echo "samtools view $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam |sort > accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
-	echo "python -m HTSeq.scripts.count -s no -q accepted_hits_sorted_dupRemoved_prehtseq_$i.sam $gtf_path > $path/tophat_out_$i/$i.counts">>"HT_cuff_$i.sh"
-	echo "rm accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
-	echo "samtools index accepted_hits_sorted_dupRemoved_$i.bam">>"HT_cuff_$i.sh"
-	echo "cufflinks -p 8 -G $gtf_path -o cufflinks_out_$i accepted_hits_sorted_dupRemoved_$i.bam">>"HT_cuff_$i.sh"
+	echo "samtools view $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam |sort > $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
+	echo "samtools view $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam |sort > $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
+	echo "python -m HTSeq.scripts.count -s no -q $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam $gtf_path > $path/tophat_out_$i/$i.counts">>"HT_cuff_$i.sh"
+	echo "rm $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
+	echo "samtools index $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam">>"HT_cuff_$i.sh"
+	echo "cufflinks -p 8 -G $gtf_path -o $path/tophat_out_$i/cufflinks_out_$i $path/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam">>"HT_cuff_$i.sh"
 
 done
 

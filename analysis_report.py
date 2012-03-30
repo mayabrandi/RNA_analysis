@@ -137,6 +137,8 @@ Read distribution
 ^^^^^^^^^^^^^^^^^
 This table contain information about the extent to which sequences from each sample mapped to different structural parts of genes, like coding exons, untranslated regions, and transcription start sites. The actual number itself is less important than the relative values for the different kinds of regions. For a normal RNA-seq experiment you should have a higher value in the CDS Exon column than in the others, for example. "CDS Exon" means "coding sequence exons", "UTR" stands for "untranslated region", "TES" stands for "transcription end site", "TSS" stands for "transcription start site". "Intronic regions" should be interpreted as "intronic or intergenic regions".
 
+Perhaps the most easily interpretable column is the final column, mRNA fraction, which gives the fraction [0-1] of sequences that mapped to ENSEMBL-annotated mRNA (including coding regions and UTRs). While this fraction is not completely accurate (because ENSEMBL does not completely describe the transcriptome), it is a useful summary statistic which should be relatively high for an mRNA-seq experiment, typically above 0.8.
+
 
 ${Read_Distribution}
 
@@ -220,9 +222,10 @@ def generate_report(proj_conf):
         proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
         uppnex_proj = proj_data.uppnex_id
     except:
-	uppnex_proj = "b201YYXX"
-        print "No project metadata fetched"
         pass
+    if uppnex_proj=="":
+        uppnex_proj = "b201YYXX"
+        print "No project metadata fetched"
     d['uppnex'] = uppnex_proj 
 
 
@@ -266,7 +269,7 @@ def generate_report(proj_conf):
     Groups=["Sample:","CDS Exons:","5'UTR Exons:","3'UTR Exons:","Intronic region:","TSS up 1kb:","TES down 1kb:"]
 
     tab.set_cols_dtype(['t','t','t','t','t','t','t','t'])
-    tab.add_row(["Sample","CDS Exons","5'UTR Exon","3'UTR Exon","Intron","TSS up 1kb","TES down 1kb","mRNA frac"])
+    tab.add_row(["Sample","CDS Exon","5'UTR Exon","3'UTR Exon","Intron","TSS up 1kb","TES down 1kb","mRNA frac"])
     for i in range(len(proj_conf['samples'])):
         sample_name=proj_conf['samples'][i]
         print >> json, sample_name+': {'
