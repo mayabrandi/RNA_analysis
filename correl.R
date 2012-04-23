@@ -1,13 +1,9 @@
 args = commandArgs(TRUE)
-path   = args[1]
-snames = args[c(2:length(args))]
-#snames <- unlist(read.table("sample_names.txt"))
-
-# Cufflinks 1.0.3 gene expression estimates
+snames = args[c(1:length(args))]
 
 # Find no of rows
 name <- snames[1]
-fname <- paste(path,"/tophat_out_", name, "/cufflinks_out_", name, "/genes.fpkm_tracking", sep="")
+fname <- paste("tophat_out_", name, "/cufflinks_out_", name, "/genes.fpkm_tracking", sep="")
 temp <- read.table(fname, header=T)
 
 e <-matrix(nrow=nrow(temp), ncol= (length(snames)))
@@ -17,7 +13,7 @@ idx <- 0
 
 for (name in snames) {
     idx <- idx+1
-    fname <- paste(path,"/tophat_out_", name, "/cufflinks_out_", name, "/genes.fpkm_tracking", sep="")
+    fname <- paste("tophat_out_", name, "/cufflinks_out_", name, "/genes.fpkm_tracking", sep="")
     temp <- read.table(fname, header=T)
     colnames(e)[idx] <- name
     o <- order(temp$tracking_id)
@@ -55,7 +51,7 @@ dev.off()
 # HTSeq counts
 
 name <- snames[1]
-fname <- paste(path,"/tophat_out_", name, "/", name, ".counts", sep="")
+fname <- paste("tophat_out_", name, "/", name, ".counts", sep="")
 nlines <- length(count.fields(fname))
 temp <- read.table(fname, header=F, nrow = (nlines-4))
 h <- matrix(nrow=nrow(temp), ncol=length(snames))
@@ -65,7 +61,7 @@ idx <- 0
 
 for (name in snames){
     idx <- idx + 1
-    fname <- paste(path,"/tophat_out_", name, "/", name, ".counts", sep="")
+    fname <- paste("tophat_out_", name, "/", name, ".counts", sep="")
     temp <- read.table(fname, header=F, nrow = (nlines-4))
     colnames(h)[idx]<-name
     h[,idx]<-temp[,2]

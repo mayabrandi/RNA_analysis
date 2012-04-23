@@ -1,18 +1,35 @@
 #!/usr/bin/env python
-"""Make RNA-seq analysis for a project
-
+"""
 Usage:
-     analysis_reports.py <run name> <project id> <samle names> 
-                	    [--config-file=<config file>]
+     	analysis_reports.py <run name> <project id> <samle names> [Options]
 
-Sample names should be give as a comma delimited string.
+Arguments:
+     	<run name>
+                - eg: 20120307B_hiseq2000
 
+	<project id> 
+		- eq: J.Hasmats_11_03 
 
-
-The script loads the run_info.yaml and generates a report for each project.
+	<samle names>
+		- Sample names should be give as a comma delimited string.
 
 Options:
-  -c, --config-file = <config file>   	   typ post_process.yaml Vet inte vad jag ska skriva
+  	-c, --config-file = <config file>   	   
+		- post_process.yaml
+        -r, --rRNA_table        to include an rRNA table in the report
+				-requires rRNA.quantification from quantify_rRNA.sh
+        -s, --Map_Stat          to include mapping statistics table in the report
+				-requires stat from get_stat.sh
+        -d, --Read_Dist         to include read distribution table in the report
+				-requires stderr output files from read_distribution.py
+        -f, --FPKM              to include fpkm-heatmap and -pca plot in the report
+				-requires FPKM_PCAplot.pdf and FPKM_heatmap.pdf from correl.R	
+        -c FILE, --config-file=FILE
+                                FILE should be a config file. (post_process.yaml)
+
+more pre requires:
+	- run_info.yaml for the project.
+
 """
 
 import os
@@ -37,10 +54,13 @@ from bcbio.scilifelab.google.project_metadata import ProjectMetaData
 
 import operator
 
-TEMPLATE="""\
+
+def main(run,project_id,sample_names,config_file,Map_Stat,Read_Dist,FPKM,rRNA_table):
+
+    TEMPLATE="""\
 RNA-seq analysis report for ${project_id}
 =================================
-
+   
 ${latex_opt}
 
 Summary
@@ -50,101 +70,135 @@ ${project_id} (UPPMAX project ${uppnex})
 
 **Samples:**
 ${samplenames}
-
+    
 **Run name:**
 ${runname}
 
 **Mapping:** 
 ${mapping}
-
+    
 **Duplicate removal:**
 ${dup_rem}
-
+    
 **Read count:**
 ${read_count}
-
+    
 **RPKM/FPKM values:**
 ${quantifyer}
-
+    
 **Result directories on UPPMAX:** /proj/${uppnex}/INBOX/${project_id}/analysis/alignments (BAM files), /proj/${uppnex}/INBOX/${project_id}/analysis/quantification (FPKM files)
 
-
+.. raw:: latex
+       
+   \clearpage    
+    
 Results
--------------------------
-
+-------------------------"""
+    
+    if Map_Stat:
+        TEMPLATE=TEMPLATE+"""
 Mapping statistics
 ^^^^^^^^^^^^^^^
 ${Mapping_statistics}
-
+    
 Comments
-~~~~~~~~~
-
+~~~~~~~~
+    
 **tot # read pairs:** 
 
 The total number of read pairs indicates the total number of sequenced paired-end reads. Since a paired-end read is made up of two sequenced fragments (mates), the total number of sequenced 100-bp regions is twice the number shown in this column.
-
+    
 **% mapped reads:**
-
+    
 The number of fragments that are mapped relative to the total number of sequenced fragments. 
-
+    
 **% reads left after dup rem:**
-
-We remove duplicate reads (paired end reads where both mates map to the same loci as both mates in a different paired-end read) because these are likely to be artifacts caused by PCR amplification or over-sequencing. Aligned files in BAM format with duplicates removed can be found in /proj/${uppnex}/INBOX/${project_id}/analysis/alignments.
-
+    
+We remove duplicate reads (paired end reads where both mates map to the same loci as both mates in a different paired-end read because these are likely to be artifacts caused by PCR amplification or over-sequencing. Aligned files in BAM format with duplicates removed can be found in /proj/${uppnex}/INBOX/${project_id}/analysis/alignments.
 
 
 .. raw:: latex
-   
+       
    \clearpage
 
+"""
+    
+    TEMPLATE=TEMPLATE+"""
 Expression values
 ^^^^^^^^^^^^^^^^^
-
-The /proj/${uppnex}/INBOX/${project_id}/analysis/quantification folder contains FPKM values calculated using the Cufflinks program using 
-ENSEMBL annotation of genes and transcripts for each sample. These files also contain the upper and lower limits of the confidence interval for the FPKM estimate. FPKM values are the paired-end equivalent of RPKM (Reads Per Kilobase per Million mapped reads; the standard measure for gene expression in RNA-seq.)
-
+    
+The /proj/${uppnex}/INBOX/${project_id}/analysis/quantification folder contains FPKM values calculated using the Cufflinks program using ENSEMBL annotation of genes and transcripts for each sample. These files also contain the upper and lower limits of the confidence interval for the FPKM estimate. FPKM values are the paired-end equivalent of RPKM (Reads Per Kilobase per Million mapped reads; the standard measure for gene expression in RNA-seq.)
+    
 There is also a single fpkm_table.txt file, which contains all of the FPKM values. This can be opened in Excel or a regular text processing application.
-
+    
 For analyzing differential expression of genes or transcripts, it may be useful to have the raw read counts (the number of sequences that map to each gene/transcript) as well. These are calculated using the HTSeq software and are collected into a table called count_table.txt.
 
+
 .. raw:: latex
-   
+       
    \clearpage
 
+"""
+    
+    
+    if FPKM:
+        TEMPLATE=TEMPLATE+"""
 FPKM heatmap
 ^^^^^^^^^^^^^^^^^
 This heatmap shows the (Pearson) correlation between FPKM values of samples. 
-
+    
 ${FPKM_heatmap}
-
-
+    
+    
 .. raw:: latex
-   
+       
    \clearpage
-
+    
 FPKM PCA
 ^^^^^^^^^^^^^^^^^
 This PCA (principal component analysis) score plot has the samples plotted according to their scores for the two principal components that explain the largest amount of variance in the FPKM data table. The number after 'expl var' in the axis labels tells you how much of the variance that is explained by each component. Similar samples should, in theory, cluster together in the PCA plot. PCA is a way to compress the information in your high-dimensional data matrix so that it can be plotted in two dimensions.
-
+    
 ${FPKM_PCAplot}
 
 
 .. raw:: latex
-   
+       
    \clearpage
 
+"""
+    
+    if Read_Dist:
+        TEMPLATE=TEMPLATE+"""
 Read distribution
 ^^^^^^^^^^^^^^^^^
 This table contain information about the extent to which sequences from each sample mapped to different structural parts of genes, like coding exons, untranslated regions, and transcription start sites. The actual number itself is less important than the relative values for the different kinds of regions. For a normal RNA-seq experiment you should have a higher value in the CDS Exon column than in the others, for example. "CDS Exon" means "coding sequence exons", "UTR" stands for "untranslated region", "TES" stands for "transcription end site", "TSS" stands for "transcription start site". "Intronic regions" should be interpreted as "intronic or intergenic regions".
-
-Perhaps the most easily interpretable column is the final column, mRNA fraction, which gives the fraction [0-1] of sequences that mapped to ENSEMBL-annotated mRNA (including coding regions and UTRs). While this fraction is not completely accurate (because ENSEMBL does not completely describe the transcriptome), it is a useful summary statistic which should be relatively high for an mRNA-seq experiment, typically above 0.8.
-
+Perhaps the most easily interpretable column is the final column, mRNA fraction, which gives the fraction [0-1] of sequences that mapped to ENSEMBL-annotated mRNA (including coding regions and UTRs). While this fraction is not completely accurate (because ENSEMBL doe not completely describe the transcriptome), it is a useful summary statistic which should be relatively high for an mRNA-seq experiment, typically above 0.8.
 
 ${Read_Distribution}
 
+
+.. raw:: latex
+       
+   \clearpage
+
 """
-def main(run,project_id,sample_names,config_file):
+    
+    if rRNA_table:
+        TEMPLATE=TEMPLATE+"""
+Quantification of rRNA present in the samples
+^^^^^^^^^^^^^^^^^^^^^
+    
+${rRNA_table}
+
+
+.. raw:: latex
+       
+   \clearpage
+
+"""
+
     sphinx_defs = []
+
     if config_file:
         config = load_config(config_file)
     else:
@@ -208,9 +262,9 @@ def generate_report(proj_conf):
         'FPKM_heatmap':"",
         'FPKM_PCAplot':"",
         'Mapping_statistics': "",
-        'Read_Distribution':""
+        'Read_Distribution':"",
+	'rRNA_table':""
         }
-
 
     ## Latex option (no of floats per page)
     floats_per_page = '.. raw:: latex\n\n   \setcounter{totalnumber}{8}'
@@ -222,10 +276,9 @@ def generate_report(proj_conf):
         proj_data = ProjectMetaData(proj_conf['id'], proj_conf['config'])
         uppnex_proj = proj_data.uppnex_id
     except:
-        pass
-    if uppnex_proj=="":
         uppnex_proj = "b201YYXX"
-        print "No project metadata fetched"
+        print "No uppnex ID fetched"
+	pass
     d['uppnex'] = uppnex_proj 
 
 
@@ -237,6 +290,7 @@ def generate_report(proj_conf):
         d['read_count'] = os.path.join(tools['counts'],tools['counts_version'])
         d['quantifyer'] = os.path.join(tools['quantifyer'],tools['quantifyer_version'])
     except:
+	print "Could not fetched RNA-seq tools from config file post_process.yaml"
         d['mapping'] = "X"
         d['dup_rem'] = "X"
         d['read_count'] = "X"
@@ -245,73 +299,109 @@ def generate_report(proj_conf):
 
 
     ## Mapping Statistics
-    f=open('stat', 'r')
-    data = f.readlines()
-    max_cols=4
 
-    for i in range((len(data[1:])-1)/max_cols+1):
-       	tab = Texttable()
-	tab.set_cols_dtype(['t','t','t','t'])
-	data_sep = data[i*max_cols+1:max_cols*(i+1)+1]
-	data_sep.insert(0,data[0])
-        for j in range(len(data_sep[0].split(' '))):
-	    lista=[]
-     	    for col in data_sep:
-                lista.append(str(col.strip().split(' ')[j].replace('_',' '))+' ')
-            tab.add_row(lista)
+    try:
+	f=open('stat', 'r')
+        data = f.readlines()
+        max_cols=4
+    	for i in range((len(data[1:])-1)/max_cols+1):
+       	    tab = Texttable()
+	    tab.set_cols_dtype(['t','t','t','t'])
+	    data_sep = data[i*max_cols+1:max_cols*(i+1)+1]
+	    data_sep.insert(0,data[0])
+            for j in range(len(data_sep[0].split(' '))):
+	        lista=[]
+     	    	for col in data_sep:
+                    lista.append(str(col.strip().split(' ')[j].replace('_',' '))+' ')
+            	tab.add_row(lista)
 
-        d['Mapping_statistics']=d['Mapping_statistics']+'\n\n'+tab.draw()
+            d['Mapping_statistics']=d['Mapping_statistics']+'\n\n'+tab.draw()
+    except:
+	print "Could not make Mapping Statistics table"
+        pass
+
 
     ## Read Distribution 
-    tab = Texttable()
-    json=open('Ever_rd.json','a')
-    print >> json, '{'
-    Groups=["Sample:","CDS Exons:","5'UTR Exons:","3'UTR Exons:","Intronic region:","TSS up 1kb:","TES down 1kb:"]
 
-    tab.set_cols_dtype(['t','t','t','t','t','t','t','t'])
-    tab.add_row(["Sample","CDS Exon","5'UTR Exon","3'UTR Exon","Intron","TSS up 1kb","TES down 1kb","mRNA frac"])
-    for i in range(len(proj_conf['samples'])):
-        sample_name=proj_conf['samples'][i]
-        print >> json, sample_name+': {'
-        row=[sample_name]
-        Reads_counts=[]
-        f=open('Ever_rd_'+sample_name+'.err','r')
-        for line in f:
-            Group=line.split('\t')[0]
-            if Group in Groups:
-                if Group=="TES down 1kb:":
-                    print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())
-                else:
-                    print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())+','
-                row.append(str(line.split('\t')[3].strip())+' ')
-                Reads_counts.append(float(line.split('\t')[2].strip()))
-        t=os.popen("grep fragments: Ever_rd_"+sample_name+".err|cut -f 3 -d ' '")
-        tot=float(t.readline())
-        frac=(Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot
-        row.append(str(round((Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot,2)))
-        tab.add_row(row)
-        f.close()
-        if i==(len(proj_conf['samples'])-1):
-                print >> json,'}'
-        else:
-                print >> json,'},'
-    print >> json, '}'
-    json.close()
+    try:
+        tab = Texttable()
+        json=open('Ever_rd.json','a')
+        print >> json, '{'
+        Groups=["Sample:","CDS Exons:","5'UTR Exons:","3'UTR Exons:","Intronic region:","TSS up 1kb:","TES down 1kb:"]
 
-    d['Read_Distribution']=tab.draw()
+        tab.set_cols_dtype(['t','t','t','t','t','t','t','t'])
+        tab.add_row(["Sample","CDS Exon","5'UTR Exon","3'UTR Exon","Intron","TSS up 1kb","TES down 1kb","mRNA frac"])
+    
+        for i in range(len(proj_conf['samples'])):
+            sample_name=proj_conf['samples'][i]
+            print >> json, sample_name+': {'
+            row=[sample_name]
+            Reads_counts=[]
+            f=open('Ever_rd_'+sample_name+'.err','r')
+            for line in f:
+                Group=line.split('\t')[0]
+                if Group in Groups:
+                    if Group=="TES down 1kb:":
+                        print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())
+                    else:
+                        print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())+','
+                    row.append(str(line.split('\t')[3].strip())+' ')
+                    Reads_counts.append(float(line.split('\t')[2].strip()))
+	    t=os.popen("grep 'Total Fragments' Ever_rd_1.err|sed 's/Total Fragments               //g'")
+            tot=float(t.readline())
+            frac=(Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot
+            row.append(str(round((Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot,2)))
+            tab.add_row(row)
+            f.close()
+            if i==(len(proj_conf['samples'])-1):
+                    print >> json,'}'
+            else:
+                    print >> json,'},'
+        print >> json, '}'
+        json.close()
+        d['Read_Distribution']=tab.draw()
+    except:
+	print "Could not make Read Distribution table"
+        pass
+
 
     ## FPKM_PCAplot, FPKM_heatmap
-    d['FPKM_PCAplot'] = m2r.image("FPKM_PCAplot.pdf", width="100%")
-    d['FPKM_heatmap'] = m2r.image("FPKM_heatmap.pdf", width="100%")
 
+    try:
+        d['FPKM_PCAplot'] = m2r.image("FPKM_PCAplot.pdf", width="100%")
+        d['FPKM_heatmap'] = m2r.image("FPKM_heatmap.pdf", width="100%")
+    except:
+	print "could not make FPKM PCAplot and FPKM heatmap"
+        pass
+
+    ## rRNA_table
+    try:
+	os.system('sort -n rRNA.quantification>rRNA.quantification_sorted')
+	tab = Texttable()
+	tab.set_cols_dtype(['t','t'])
+	tab.add_row(["Sample","rRNA"])
+	f=open('rRNA.quantification_sorted','r')
+	for line in f:
+		tab.add_row([str(line.split('\t')[0].strip()),str(line.split('\t')[1].strip())])
+	d['rRNA_table']=tab.draw()
+	f.close()
+    except:
+	print "could not generate rRNA table"
+        pass   
+ 
     return d
 
 
 ##-----------------------------------------------------------------------------
 if __name__ == "__main__":
     usage = """
-    analysis_reports.py <run name> <project id> <samle names>
-                           [-c-config-file=<config file>]
+    analysis_reports.py <run name> <project id> <samle names> [options]
+			-r, --rRNA_table	to include an rRNA table in the repport
+			-s, --Map_Stat          to include mapping statistics table in the repport
+  			-d, --Read_Dist         to include read distribution table in the repport
+  			-f, --FPKM          	to include fpkm-heatmap and -pca plot in the repport
+  			-c FILE, --config-file=FILE
+						FILE should be a config file. (post_process.yaml) 
 
     For more extensive help type analysis_report.py
 """
@@ -320,9 +410,21 @@ if __name__ == "__main__":
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",default=False)
     parser.add_option("--v1.5", dest="v1_5_fc", action="store_true", default=False)
     parser.add_option("-c", "--config-file", dest="config_file", default=None)
+    parser.add_option("-r", "--rRNA_table", dest="rRNA_table",action="store_true", default=False)
+    parser.add_option("-s", "--Map_Stat", dest="Map_Stat",action="store_true", default=False)
+    parser.add_option("-d", "--Read_Dist", dest="Read_Dist",action="store_true", default=False)
+    parser.add_option("-f", "--FPKM", dest="FPKM",action="store_true", default=False)
     (options, args) = parser.parse_args()
     if len(args) < 1:
         print __doc__
         sys.exit()
-    kwargs = dict(config_file = options.config_file)
+    kwargs = dict(
+		config_file = options.config_file,
+		Map_Stat = options.Map_Stat,
+		Read_Dist = options.Read_Dist,
+		FPKM = options.FPKM,
+		rRNA_table = options.rRNA_table
+		)
+		
     main(*args, **kwargs)
+
