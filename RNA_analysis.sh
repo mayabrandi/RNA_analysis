@@ -43,8 +43,7 @@ run_dir=$1
 project_id=$2
 bedfile=$3
 gtf_file=$4
-#run_name=20`echo $fcID|cut -f 1 -d '_'``echo ${fcID##*_}|cut -c 1`_hiseq2000
-WP=/bubo/home/h24/mayabr/glob/useful_scripts/RNA_analys
+WP=/bubo/home/h24/mayabr/glob/RNA_analys
 config_file=/bubo/home/h24/mayabr/config/post_process.yaml
 path=`pwd`
 
