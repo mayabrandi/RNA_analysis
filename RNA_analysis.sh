@@ -43,7 +43,7 @@ run_dir=$1
 project_id=$2
 bedfile=$3
 gtf_file=$4
-WP=/bubo/home/h24/mayabr/glob/RNA_analys
+WP=/bubo/home/h24/mayabr/glob/RNA_analysis
 config_file=/bubo/home/h24/mayabr/config/post_process.yaml
 path=`pwd`
 
@@ -52,22 +52,15 @@ DEPENDENCY_HT='afterok'
 DEPENDENCY='afterok'
 
 if [ $run_dir = "m" ];then
-
 	## get samplenames
-	flowcells=(`ls|grep hiseq2000`)
-	first_flowcell=${flowcells[0]}
-	name_list=`for dir in $first_flowcell/tophat_out_*; do echo ${dir##*out_};done|sort -n`
+	name_list=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq`
 	names=`echo $name_list|sed -e 's/ /,/g'`
 
 	## megre old and new samples
 	JOBID=`sbatch $WP/merge.sh $path | sed -re 's/.+\s+([0-9]+)/\1/'`
 	DEPENDENCY_MERGE=$DEPENDENCY_MERGE:$JOBID
-
 	## get names of samples to be merged
-	rerun=""
-	for dir in ${flowcells[*]};do if [ $dir != $first_flowcell ]; then rerun=$rerun" "`for i in $path/$dir/tophat_out_*; do echo ${i##*out_};done`;fi ;done
-	rerun=(`echo $rerun|sed -e 's/ /\n/g'|sort -n|uniq`)
-
+	rerun=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq -d`
 	## run HTseq and cufflinks on meged samples
 	for i in ${rerun[*]};do
 		
@@ -92,14 +85,15 @@ python -m HTSeq.scripts.count -s no -q $path/merged/tophat_out_$i/accepted_hits_
 rm $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam
 samtools index $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam
 cufflinks -p 8 -G $gtf_file -o $path/merged/tophat_out_$i/cufflinks_out_$i $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam" >> HT_cuff_$i.sh
-	
 		JOBID=`sbatch --dependency=$DEPENDENCY_MERGE "HT_cuff_$i.sh"| sed -re 's/.+\s+([0-9]+)/\1/'`
 		DEPENDENCY_HT=$DEPENDENCY_HT:$JOBID
 		done
-
-	dep=" --dependency=$DEPENDENCY_HT"
+	if [ $DEPENDENCY_HT = 'afterok' ]; then
+		dep=" --dependency=$DEPENDENCY_MERGE"
+	else 
+		dep=" --dependency=$DEPENDENCY_HT"
+	fi
 	path=$path/merged
-	echo $i
 else
 
 	## get samplenames
@@ -108,6 +102,4 @@ else
 	dep=""
 	path=$path/$run_dir
 fi
-
 sbatch$dep $WP/make_sbatch.sh $names $bedfile $project_id $config_file $run_dir $path $gtf_file $WP
-

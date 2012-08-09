@@ -1,8 +1,8 @@
 #! /bin/bash -l
 
 #SBATCH -A a2010002
-#SBATCH -p devel
-#SBATCH -t 1:00:00
+#SBATCH -p node
+#SBATCH -t 50:00:00
 #SBATCH -J get_stat
 #SBATCH -e get_stat.err
 #SBATCH -o get_stat.out
@@ -75,20 +75,22 @@ for u in ${samplenames[*]}; do
         set -- $CD 
         C[j]=$1
         D[j]=$2
-        E[j]=`echo "scale=1;100*($1+$2)/(${readpairs[j]}*2)"|bc`
-	echo $E
+	E[j]=`echo "100*($1+$2)/(${readpairs[j]}*2)"|bc -l|python -c "print round(float(raw_input()),2)"`
+	echo ${E[j]}
         arg=tophat_out_${u}/accepted_hits_sorted_dupRemoved_${u}.bam
         #FG=`samtools flagstat $arg |grep read |awk '{print $1}'`
 	FG=`bam_stat.py -i $arg 2>&1|grep "Read-"|awk '{print $2}'`
         set -- $FG
         F[j]=$1
         G[j]=$2
-        H[j]=`echo "scale=1;100*($1+$2)/(${C[j]}+${D[j]})"|bc`
-        I[j]=`echo "scale=1;100*($1+$2)/(${readpairs[j]}*2)"|bc`
+	H[j]=`echo "100*($1+$2)/(${C[j]}+${D[j]})"|bc -l|python -c "print round(float(raw_input()),2)"`
+	I[j]=`echo "100*($1+$2)/(${readpairs[j]}*2)"|bc -l|python -c "print round(float(raw_input()),2)"`
+	echo 'duprem'
+	echo ${I[j]}
         J[j]=`samtools view $arg |grep -c NH:i:1$`
-        K[j]=`echo "scale=1;100*${J[j]}/(${F[j]}+${G[j]})"|bc`
+        K[j]=`echo "100*${J[j]}/(${F[j]}+${G[j]})"|bc -l|python -c "print round(float(raw_input()),2)"`
         L[j]=`samtools view $arg |cut -f6 |grep -c N`
-        M[j]=`echo "scale=1;100*${L[j]}/(${F[j]}+${G[j]})"|bc`
+        M[j]=`echo "100*${L[j]}/(${F[j]}+${G[j]})"|bc -l|python -c "print round(float(raw_input()),2)"`
 	
 	# Saving statistics in json format
 	if [ $j -ne $(($nr_samps-1)) ]; then  

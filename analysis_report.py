@@ -27,8 +27,6 @@ Options:
         -c FILE, --config-file=FILE
                                 FILE should be a config file. (post_process.yaml)
 
-more pre requires:
-	- run_info.yaml for the project.
 
 """
 
@@ -43,8 +41,8 @@ import re
 from mako.template import Template
 from mako.lookup import TemplateLookup
 
-from bcbio.log import create_log_handler
-from bcbio.pipeline import log
+
+from bcbio.log import logger, setup_logging
 import bcbio.templates.mako2rst as m2r
 from texttable import Texttable
 
@@ -227,7 +225,7 @@ ${rRNA_table}
 
     sphinxconf = os.path.join(os.getcwd(), "conf.py")
     if not os.path.exists(sphinxconf):
-        log.warn("no sphinx configuration file conf.py found: you have to edit conf.py yourself!")
+        logger.warn("no sphinx configuration file conf.py found: you have to edit conf.py yourself!")
     else:
         fp = open(sphinxconf)
         lines = fp.readlines()
@@ -279,6 +277,9 @@ def generate_report(proj_conf):
         uppnex_proj = "b201YYXX"
         print "No uppnex ID fetched"
 	pass
+    if not uppnex_proj:
+	uppnex_proj="b201YYXX"
+        print "No uppnex ID fetched"
     d['uppnex'] = uppnex_proj 
 
 
@@ -299,31 +300,36 @@ def generate_report(proj_conf):
 
 
     ## Mapping Statistics
-
+    tab = Texttable()
+    tab.set_cols_dtype(['t','t','t','t'])
+    tab.add_row(['Sample','tot_#_read_pairs','%_mapped_reads','%_reads_left_after_dup_rem'])
     try:
-	f=open('stat', 'r')
-        data = f.readlines()
-        max_cols=4
-    	for i in range((len(data[1:])-1)/max_cols+1):
-       	    tab = Texttable()
-	    tab.set_cols_dtype(['t','t','t','t'])
-	    data_sep = data[i*max_cols+1:max_cols*(i+1)+1]
-	    data_sep.insert(0,data[0])
-            for j in range(len(data_sep[0].split(' '))):
-	        lista=[]
-     	    	for col in data_sep:
-                    lista.append(str(col.strip().split(' ')[j].replace('_',' '))+' ')
-            	tab.add_row(lista)
-
-            d['Mapping_statistics']=d['Mapping_statistics']+'\n\n'+tab.draw()
+	for sample_name in proj_conf['samples']:
+	    f=open('tophat_out_'+sample_name+'/stat_'+sample_name, 'r')
+	    data = f.readlines()
+	    tab.add_row([sample_name,data[1].split()[1],data[2].split()[1],data[3].split()[1]])
+	    f.close()
+	d['Mapping_statistics']=tab.draw()
     except:
-	print "Could not make Mapping Statistics table"
-        pass
+	try:
+            f=open('stat', 'r')
+            data = f.readlines()
+            D=dict(zip(data[0].split(),zip(data[1].split(),data[2].split(),data[3].split())))
+            for sample_name in proj_conf['samples']:
+	        if D.has_key(sample_name):
+                    tab.add_row([sample_name,D[sample_name][0],D[sample_name][1],D[sample_name][2]])
+	        else:
+	            print 'kould not find '+sample_name+' in stat'
+            d['Mapping_statistics']=tab.draw() 
+            f.close()
+        except:
+	    print "Could not make Mapping Statistics table"
+            pass
 
 
     ## Read Distribution 
-
-    try:
+    if 'u'=='u':
+#    try:
         tab = Texttable()
         json=open('Ever_rd.json','a')
         print >> json, '{'
@@ -331,13 +337,16 @@ def generate_report(proj_conf):
 
         tab.set_cols_dtype(['t','t','t','t','t','t','t','t'])
         tab.add_row(["Sample","CDS Exon","5'UTR Exon","3'UTR Exon","Intron","TSS up 1kb","TES down 1kb","mRNA frac"])
-    
-        for i in range(len(proj_conf['samples'])):
-            sample_name=proj_conf['samples'][i]
+   	
+	for i in range(len(proj_conf['samples'])):
+	    sample_name=proj_conf['samples'][i] 
             print >> json, sample_name+': {'
             row=[sample_name]
             Reads_counts=[]
-            f=open('Ever_rd_'+sample_name+'.err','r')
+	    try:
+		f=open('RSeQC_rd_'+sample_name+'.err','r')
+	    except:
+            	f=open('Ever_rd_'+sample_name+'.err','r')
             for line in f:
                 Group=line.split('\t')[0]
                 if Group in Groups:
@@ -347,7 +356,10 @@ def generate_report(proj_conf):
                         print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())+','
                     row.append(str(line.split('\t')[3].strip())+' ')
                     Reads_counts.append(float(line.split('\t')[2].strip()))
-	    t=os.popen("grep 'Total Fragments' Ever_rd_1.err|sed 's/Total Fragments               //g'")
+#	    try:
+            t=os.popen("grep 'Total Fragments' 'RSeQC_rd_"+sample_name+".err'|sed 's/Total Fragments               //g'")
+#	    except:
+#	    	t=os.popen("grep 'Total Fragments' 'Ever_rd_"+sample_name+".err'|sed 's/Total Fragments               //g'")
             tot=float(t.readline())
             frac=(Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot
             row.append(str(round((Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot,2)))
@@ -360,9 +372,9 @@ def generate_report(proj_conf):
         print >> json, '}'
         json.close()
         d['Read_Distribution']=tab.draw()
-    except:
-	print "Could not make Read Distribution table"
-        pass
+#    except:
+#	print "Could not make Read Distribution table"
+#        pass
 
 
     ## FPKM_PCAplot, FPKM_heatmap
@@ -376,15 +388,18 @@ def generate_report(proj_conf):
 
     ## rRNA_table
     try:
-	os.system('sort -n rRNA.quantification>rRNA.quantification_sorted')
-	tab = Texttable()
-	tab.set_cols_dtype(['t','t'])
-	tab.add_row(["Sample","rRNA"])
-	f=open('rRNA.quantification_sorted','r')
+        tab = Texttable()
+        tab.set_cols_dtype(['t','t'])
+        tab.add_row(["Sample","rRNA"])
+	f=open('rRNA.quantification','r')
+	D={}
 	for line in f:
-		tab.add_row([str(line.split('\t')[0].strip()),str(line.split('\t')[1].strip())])
-	d['rRNA_table']=tab.draw()
-	f.close()
+            D[str(line.split('\t')[0].strip())]=str(line.split('\t')[1].strip())
+        for sample_name in proj_conf['samples']:
+            if D.has_key(sample_name):
+                        tab.add_row([sample_name,D[sample_name]])
+        d['rRNA_table']=tab.draw()
+        f.close()
     except:
 	print "could not generate rRNA table"
         pass   

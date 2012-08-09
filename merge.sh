@@ -7,21 +7,24 @@
 #SBATCH -o merge.out
 #SBATCH --mail-user maya.brandi@scilifelab.se
 #SBATCH --mail-type=ALL
+module load bioinfo-tools
+module load samtools
 
 path=$1
 gtf_path=$2
 flowcells=(`ls $path|grep hiseq2000`)
 nr_fc=${#flowcells[*]}
+name_list=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq`
 
-
-if [ $nr_fc  -lt 2 ]; then
+if [ $nr_fc  -lt 2 -o $# -lt 1 ]; then
 echo "
 Usage:
 	merge.sh <path> [gtf file]
 
 Arguments:
 	<path> 
-	- Path to the intermediate directory containing the runs to be merged 
+	- Path to the intermediate directory containing the runs to be merged. The
+	script merges all directories with nameds containg 'hiseq2000'. 
        	- eg: /proj/a2010002/projects/m_muurinen_11_01a/intermediate, containing 
 	the three runs: 20120127B_hiseq2000 20120228A_hiseq2000 20120328A_hiseq2000
 
@@ -36,94 +39,68 @@ Output:
 else
 	# merge first two flowcells
 	mkdir $path/merged
-	cd $path/${flowcells[0]}
-	for samp_dir in tophat_out_*;do
-		mkdir $path/merged/$samp_dir $path/merged/$samp_dir/logs
-		cd $samp_dir
-		bam_file_dupRem=`echo accepted_hits_sorted_dupRemoved_*.bam`
-		bam_file=`echo $bam_file_dupRem|sed -e 's/sorted_dupRemoved_//g'`
-		echo $samp_dir
-		if [ -e $path/${flowcells[1]}/$samp_dir ]; then
-			echo "merge"
-			## merge read
+	for name in ${name_list[*]};do
+		samp_dir=tophat_out_$name 
+                bam_file_dupRem=accepted_hits_sorted_dupRemoved_${name}.bam
+                bam_file=accepted_hits_${name}.bam
+		if [[ -e ${flowcells[0]}/$samp_dir && -e ${flowcells[1]}/$samp_dir ]];then
+			## merge read 
+			echo 'merge'
+			mkdir $path/merged/$samp_dir $path/merged/$samp_dir/logs
 			samtools merge $path/merged/$samp_dir/$bam_file_dupRem $path/${flowcells[0]}/$samp_dir/$bam_file_dupRem $path/${flowcells[1]}/$samp_dir/$bam_file_dupRem
-			samtools merge $path/merged/$samp_dir/$bam_file $path/${flowcells[0]}/$samp_dir/$bam_file $path/${flowcells[1]}/$samp_dir/$bam_file
-	
+                        samtools merge $path/merged/$samp_dir/$bam_file $path/${flowcells[0]}/$samp_dir/$bam_file $path/${flowcells[1]}/$samp_dir/$bam_file
 			## sum read counts
-                	counts_0=(`grep 'reads have been filtered out' $path/${flowcells[0]}/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
-                	counts_1=(`grep 'reads have been filtered out' $path/${flowcells[1]}/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)                    
-			counts=$((${counts_0[1]}+${counts_1[1]}))
-                	sorted=$((${counts_0[0]}+${counts_1[0]}))
-                	sed -e "s/${counts_0[1]}/$counts/g" $path/${flowcells[0]}/$samp_dir/logs/prep_reads.log|sed -e "s/${counts_0[0]}/$sorted/g" > $path/merged/$samp_dir/logs/prep_reads.log
-		else
-			echo "cp"
+                        counts_0=(`grep 'reads have been filtered out' $path/${flowcells[0]}/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
+                        counts_1=(`grep 'reads have been filtered out' $path/${flowcells[1]}/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
+                        counts=$((${counts_0[1]}+${counts_1[1]}))
+                        sorted=$((${counts_0[0]}+${counts_1[0]}))
+                        sed -e "s/${counts_0[1]}/$counts/g" $path/${flowcells[0]}/$samp_dir/logs/prep_reads.log|sed -e "s/${counts_0[0]}/$sorted/g" > $path/merged/$samp_dir/logs/prep_reads.log
+		else if [ -e ${flowcells[0]}/tophat_out_$name ];then 
+			echo 'cp'
 			## copy reads and counts
-			cp -r $path/${flowcells[0]}/$samp_dir $path/merged
-		fi
-		cd ..
+                        cp -r $path/${flowcells[0]}/$samp_dir $path/merged
+		else if [ -e ${flowcells[1]}/tophat_out_$name ];then 
+                        ## copy reads and counts
+                        cp -r $path/${flowcells[1]}/$samp_dir $path/merged
+		fi;fi;fi 
 	done
 
 	# merge all remaining flowcells with "merged"
 	if [ $nr_fc -gt 2 ]; then
 	echo "merge all remaining flowcells with merged"
 	for ((i=2; i<$nr_fc; i++));do
-		echo $i
-		cd $path/merged
-		pwd
-		ls
- 	        for samp_dir in tophat_out_*;do
-	             	cd $samp_dir           
-			pwd     
-			bam_file_dupRem=`echo accepted_hits_sorted_dupRemoved_*.bam` 
-			bam_file=`echo $bam_file_dupRem|sed -e 's/sorted_dupRemoved_//g'`
-			if [ -e $path/${flowcells[$i]}/$samp_dir ]; then
-				echo "merge"
-				echo $samp_dir
-				echo $path/${flowcells[$i]}/$samp_dir/
-				ls $path/${flowcells[$i]}/$samp_dir
-				echo ""
-				echo $path/merged/$samp_dir
-				ls $path/merged/$samp_dir/
-				## merge read
-				samtools merge $path/merged/$samp_dir/temp_${bam_file_dupRem} $bam_file_dupRem $path/${flowcells[$i]}/$samp_dir/$bam_file_dupRem
-				samtools merge $path/merged/$samp_dir/temp_${bam_file} $bam_file $path/${flowcells[$i]}/$samp_dir/$bam_file
-				mv $path/merged/$samp_dir/temp_${bam_file_dupRem} $path/merged/$samp_dir/$bam_file_dupRem
-                        	mv $path/merged/$samp_dir/temp_${bam_file} $path/merged/$samp_dir/$bam_file
-				## sum read counts
-                        	counts_0=(`grep 'reads have been filtered out' $path/merged/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
-                        	counts_1=(`grep 'reads have been filtered out' $path/${flowcells[$i]}/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
-                        	counts=$((${counts_0[1]}+${counts_1[1]}))
-                        	sorted=$((${counts_0[0]}+${counts_1[0]}))
-                        	sed -e "s/${counts_0[1]}/$counts/g" $path/merged/$samp_dir/logs/prep_reads.log|sed -e "s/${counts_0[0]}/$sorted/g" > $path/merged/$samp_dir/logs/temp_prep_reads.log
-                        	mv $path/merged/$samp_dir/logs/temp_prep_reads.log $path/merged/$samp_dir/logs/prep_reads.log		
-                        	echo "" 
-			        echo "after merge"
-                                echo $samp_dir
-                                echo $path/${flowcells[$i]}/$samp_dir/
-                                ls $path/${flowcells[$i]}/$samp_dir
-                                echo ""
-                                echo $path/merged/$samp_dir
-                                ls $path/merged/$samp_dir/
-	
-			fi
-			cd ..
-		done
-		cd ..
+		for name in ${name_list[*]};do  
+			echo ${flowcells[i]}               
+			samp_dir=tophat_out_$name
+			bam_file_dupRem=accepted_hits_sorted_dupRemoved_${name}.bam
+			bam_file=accepted_hits_${name}.bam
+			if [[ -e ${flowcells[i]}/$samp_dir && -e merged/$samp_dir ]];then
+                                ## merge read
+				echo 'merge'
+				ls $path/merged/
+                                samtools merge $path/merged/$samp_dir/temp_${bam_file_dupRem} $path/merged/$samp_dir/$bam_file_dupRem $path/${flowcells[$i]}/$samp_dir/$bam_file_dupRem
+                                echo 'hej§'
+				samtools merge $path/merged/$samp_dir/temp_${bam_file} $path/merged/$samp_dir/$bam_file $path/${flowcells[$i]}/$samp_dir/$bam_file
+                                mv $path/merged/$samp_dir/temp_${bam_file_dupRem} $path/merged/$samp_dir/$bam_file_dupRem
+                                mv $path/merged/$samp_dir/temp_${bam_file} $path/merged/$samp_dir/$bam_file
+                                ## sum read counts
+                                counts_0=(`grep 'reads have been filtered out' $path/merged/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
+                                counts_1=(`grep 'reads have been filtered out' $path/${flowcells[$i]}/$samp_dir/logs/prep_reads.log|cut -f 1,4 -d ' '`)
+                                counts=$((${counts_0[1]}+${counts_1[1]}))
+                                sorted=$((${counts_0[0]}+${counts_1[0]}))
+                                sed -e "s/${counts_0[1]}/$counts/g" $path/merged/$samp_dir/logs/prep_reads.log|sed -e "s/${counts_0[0]}/$sorted/g" > $path/merged/$samp_dir/logs/temp_prep_reads.log
+                                mv $path/merged/$samp_dir/logs/temp_prep_reads.log $path/merged/$samp_dir/logs/prep_reads.log
+                	else if [ -e ${flowcells[i]}/$samp_dir ];then
+                        	## copy reads and counts
+				echo 'cp'
+                        	cp -r $path/${flowcells[i]}/$samp_dir $path/merged
+                	fi;fi
+        	done
         done	
 	fi
-	pwd
 	if [ "$gtf_path" != "" ]; then
-	echo "## run HTseq and cufflinks on meged samples"
-	echo $gtf_path
-	echo "## run HTseq and cufflinks on meged samples"
         ## get names of samples to be merged
-        first_flowcell=${flowcells[0]}
-        rerun=""
-        for dir in ${flowcells[*]};do if [ $dir != $first_flowcell ]; then rerun=$rerun" "`for i in $path/$dir/tophat_out_*; do echo ${i##*out_};done`;fi ;done
-	echo ${rerun[*]}
-        rerun=(`echo $rerun|sed -e 's/ /\n/g'|sort -n|uniq`)
-	echo ${rerun[*]}
-	
+	rerun=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq -d`	
 	## run HTseq and cufflinks on meged samples
 	for i in ${rerun[*]};do
         echo "#!/bin/bash -l">"HT_cuff_$i.sh"
@@ -154,7 +131,7 @@ else
 	echo $i
 	echo "HT_cuff_$i.sh"
 
-        sbatch HT_cuff_$i.sh
+        ##sbatch HT_cuff_$i.sh
         done
 	fi
 fi

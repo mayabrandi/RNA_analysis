@@ -35,6 +35,7 @@ pdf("FPKM_heatmap.pdf")
 heatmap(cor(e), symm=T)
 dev.off()
 
+library(MASS)
 library(calibrate)
 p <- princomp(e)
 l <- p$loadings[,1:2]
@@ -53,7 +54,7 @@ dev.off()
 name <- snames[1]
 fname <- paste("tophat_out_", name, "/", name, ".counts", sep="")
 nlines <- length(count.fields(fname))
-temp <- read.table(fname, header=F, nrow = (nlines-4))
+temp <- read.table(fname, header=F, nrow = (nlines-5))
 h <- matrix(nrow=nrow(temp), ncol=length(snames))
 colnames(h) <- rep("NO_NAME_ASSIGNED", length(snames))
 rownames(h) <- temp[,1]
@@ -62,7 +63,7 @@ idx <- 0
 for (name in snames){
     idx <- idx + 1
     fname <- paste("tophat_out_", name, "/", name, ".counts", sep="")
-    temp <- read.table(fname, header=F, nrow = (nlines-4))
+    temp <- read.table(fname, header=F, nrow = (nlines-5))
     colnames(h)[idx]<-name
     h[,idx]<-temp[,2]
 
