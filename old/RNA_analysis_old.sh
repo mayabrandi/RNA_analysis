@@ -3,14 +3,14 @@
 #	and should be run from the intermediate directory of the project to be analysed. 
 #	See the README for further information
 
-if [ $# -lt 11 ]; then
+if [ $# -ne 6 ]; then
   echo "Usage:
 	stand in 'intermediate' and run
 
-	RNA_analysis.sh -p <project id> -b <bed file> -g <gtf file> -m <mail> -c <config_file> <run dir 1> <run dir 2> ... <run dir N>
+	RNA_analysis.sh <run dir> <project id> <bed file> <gtf file> <mail> <config_file>
 
 Arguments:
-        <run dir i>
+        <run dir>
                 - The name of the directory with the tophat_out_* -dirs.
 		This is typically the same as the run name, such as
 		20120323A_hiseq2000, but can be any name. The name of
@@ -19,9 +19,8 @@ Arguments:
 		rst file if your run dir name doesn't have an appropriate
 		'run name'.
 
-                - If more than one directory is given, the script will merge 
-		the bamfiles from the diferent directories and do the analysis 
-		on the merged runs
+                - If set to 'm' the script will merge and do the analysis on 
+                the merged runs
 
         <project id>
                 - eg: M.Muurinen_11_01a
@@ -46,41 +45,31 @@ module load python/2.7
 export PYTHONPATH=/proj/a2010002/nobackup/sw/mf/bioinfo-tools/pipelines/RSeQC-2.0.0/sw/comp/python/2.7_kalkyl/lib/python2.7/site-packages:$PYTHONPATH
 export PATH=/proj/a2010002/nobackup/sw/mf/bioinfo-tools/pipelines/RSeQC-2.0.0/sw/comp/python/2.7_kalkyl/bin:$PATH
 
-
+run_dir=$1
+project_id=$2
+bedfile=$3
+gtf_file=$4
+mail=$5
+config_file=$6
 WP=/bubo/home/h24/mayabr/glob/RNA_analysis
 path=`pwd`
-while getopts ":p:b:g:m:c:" option; do
-        case ${option} in
-                p) project_id=${OPTARG};;
-                b) bedfile=${OPTARG};;
-                g) gtf_file=${OPTARG};;
-		m) mail=${OPTARG};;
-		c) config_file=${OPTARG};;
-        esac
-done
-shift $(( OPTIND - 1 ))
 
-run_dirs=''
-for dir in "$@"; do
-        run_dirs=$run_dirs" "$dir
-done
-run_dirs=($run_dirs)
-## get sample names
-name_list=`for dir in ${run_dirs[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq`
-for dir in ${run_dirs[*]};do ls -d $dir/tophat_out_*;done
-names=`echo $name_list|sed -e 's/ /,/g'`
 DEPENDENCY_MERGE='afterok'
 DEPENDENCY_HT='afterok'
 DEPENDENCY='afterok'
 
-if [ ${#run_dirs[*]} -gt 1 ];then
-	run_dir='merged'
+if [ $run_dir = "m" ];then
+	## get samplenames
+	name_list=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq`
+	names=`echo $name_list|sed -e 's/ /,/g'`
+
 	## megre old and new samples
 	JOBID=`sbatch $WP/merge.sh $path | sed -re 's/.+\s+([0-9]+)/\1/'`
 	DEPENDENCY_MERGE=$DEPENDENCY_MERGE:$JOBID
 
 	## get names of samples to be merged
-	rerun=`for dir in ${run_dirs[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq -d`
+	rerun=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq -d`
+
 	## run HTseq and cufflinks on meged samples
 	path=$path/merged
 	for i in ${rerun[*]};do
@@ -94,9 +83,12 @@ if [ ${#run_dirs[*]} -gt 1 ];then
 		dep=" --dependency=$DEPENDENCY_HT"
 	fi
 else
+
+	## get samplenames
+	name_list=`for dir in $run_dir/tophat_out_*; do echo ${dir##*out_};done|sort -n`
+	names=`echo $name_list|sed -e 's/ /,/g'`
 	dep=""
-	run_dir=${run_dirs[*]}
 	path=$path/$run_dir
 fi
-sbatch$dep $WP/make_sbatch.sh $names $bedfile $project_id $config_file $run_dir $path $gtf_file $WP $mail
 
+sbatch$dep $WP/make_sbatch.sh $names $bedfile $project_id $config_file $run_dir $path $gtf_file $WP $mail

@@ -1,0 +1,94 @@
+RNA-seq analysis
+
+Description
+===========
+The RNA_analysis package contains some scripts for making a basic RNS-seq 
+analysis of a project. 
+
+RNA_analysis.sh
+analysis_report.py  
+correl.R  
+get_stat.sh  
+make_sbatch.sh  
+merge.sh 
+
+The main script of the pipeline is RNA_analysis.sh. For help on how to use 
+any of the sub scripts taken separately, run the particular script without 
+arguments. 
+
+RNA_analysis.sh should be run from the intermediate directory containing a 
+sub directory with the tophat_out_* folders from Mikaels pipeline 
+with cufflinks output and counts.
+
+If the project has been resequenced RNA_analysis.sh  merges the
+alignments from the different runs and reruns HTseq and cufflinks
+on the merged alignments before starting the regular pipeline.
+This is done with the assumption that each run is represented in 
+intermediate by a separate sub directory in the following way:
+
+Eg:
+
+$ ls /proj/a2010002/projects/m_muurinen_11_01a/intermediate
+20120127B_hiseq2000  20120228A_hiseq2000  20120321B_hiseq2000
+$ ls /proj/a2010002/projects/m_muurinen_11_01a/intermediate/20120127B_hiseq2000
+tophat_out_1	tophat_out_14	tophat_out_19	tophat_out_5
+tophat_out_10	tophat_out_15	tophat_out_20	tophat_out_6
+tophat_out_11	tophat_out_16	tophat_out_2	tophat_out_7
+tophat_out_12	tophat_out_17	tophat_out_3	tophat_out_8
+tophat_out_13	tophat_out_18	tophat_out_4	tophat_out_9
+$ ls /proj/a2010002/projects/m_muurinen_11_01a/intermediate/20120228A_hiseq2000
+tophat_out_11	tophat_out_13
+$ ls /proj/a2010002/projects/m_muurinen_11_01a/intermediate/20120321B_hiseq2000
+tophat_out_11   tophat_out_13
+
+
+Usage of RNA_analysis.sh
+========================
+
+Step 0:
+Before you start make sure that the variable WP in RNA_analysis.sh is set to the 
+path where you have saved RNA_analysis package.
+
+
+Step 1:
+In the intermediate directory, type
+$ RNA_analysis.sh <run dir> <project id> <bed file> <gtf file>
+
+	<run dir>
+                - The name of the directory with the tophat_out_* -dirs.
+		This is typically the same as the run name, such as
+		20120323A_hiseq2000, but can be any name. The name of
+		the run dir will also be the name set as the 'run name' 
+		in the report. You might want to change this in the 
+		rst file if your run dir name doesn't have an appropriate
+		'run name'.
+
+                - If set to 'm' the script will merge and do the analysis on 
+                the merged runs 
+	<project id> 
+		- eg: M.Muurinen_11_01a
+	<bed file> 
+		- reference gene model in bed format. Used by Ever-Seq
+		to get gene body coverage and read distribution. 
+	<gtf fie>
+		- reference annotation in gtf format, used by cufflinks and HTseq
+		- set to "-" if not merging
+
+Output directory:
+If the script was run with the merge flag "m", the output will be placed in a new 
+directory called merged, otherwise it will be placed in <run date><A/B>_hiseq2000.
+
+
+Step 2:
+When the pipeline is finished a bash file for generating the report has been 
+created and stored in the sbatch folder in the output directory. Before making the 
+report you need to generate a mako template standing in the output directory.
+
+$ sphinx-quiqstart        
+$ /sbatch/analysis_report.sh
+$ make latexpdf
+
+
+
+
+

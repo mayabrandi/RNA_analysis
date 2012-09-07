@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH -A a2010002
 #SBATCH -p node
-#SBATCH -t 15:00:00
+#SBATCH -t 40:00:00
 #SBATCH -J merge
 #SBATCH -e merge.err
 #SBATCH -o merge.out

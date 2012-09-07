@@ -328,8 +328,7 @@ def generate_report(proj_conf):
 
 
     ## Read Distribution 
-    if 'u'=='u':
-#    try:
+    try:
         tab = Texttable()
         json=open('Ever_rd.json','a')
         print >> json, '{'
@@ -347,6 +346,7 @@ def generate_report(proj_conf):
 		f=open('RSeQC_rd_'+sample_name+'.err','r')
 	    except:
             	f=open('Ever_rd_'+sample_name+'.err','r')
+		pass
             for line in f:
                 Group=line.split('\t')[0]
                 if Group in Groups:
@@ -356,10 +356,13 @@ def generate_report(proj_conf):
                         print >> json, '"'+Group+'"'+':'+str(line.split('\t')[3].strip())+','
                     row.append(str(line.split('\t')[3].strip())+' ')
                     Reads_counts.append(float(line.split('\t')[2].strip()))
-#	    try:
-            t=os.popen("grep 'Total Fragments' 'RSeQC_rd_"+sample_name+".err'|sed 's/Total Fragments               //g'")
-#	    except:
-#	    	t=os.popen("grep 'Total Fragments' 'Ever_rd_"+sample_name+".err'|sed 's/Total Fragments               //g'")
+	    if os.path.exists('RSeQC_rd_'+sample_name+'.err'):
+		t=os.popen("grep 'Total Fragments' 'RSeQC_rd_"+sample_name+".err'|sed 's/Total Fragments               //g'")
+	    else:
+		try:
+			t=os.popen("grep 'Total Fragments' 'Ever_rd_"+sample_name+".err'|sed 's/Total Fragments               //g'")
+		except:		
+			pass
             tot=float(t.readline())
             frac=(Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot
             row.append(str(round((Reads_counts[0]+Reads_counts[1]+Reads_counts[2])/tot,2)))
@@ -372,19 +375,19 @@ def generate_report(proj_conf):
         print >> json, '}'
         json.close()
         d['Read_Distribution']=tab.draw()
-#    except:
-#	print "Could not make Read Distribution table"
-#        pass
+
+    except:
+	print "Could not make Read Distribution table"
+        pass
 
 
     ## FPKM_PCAplot, FPKM_heatmap
-
-    try:
+    if os.path.exists("FPKM_PCAplot.pdf") and os.path.exists("FPKM_heatmap.pdf"):
         d['FPKM_PCAplot'] = m2r.image("FPKM_PCAplot.pdf", width="100%")
         d['FPKM_heatmap'] = m2r.image("FPKM_heatmap.pdf", width="100%")
-    except:
+    else:
 	print "could not make FPKM PCAplot and FPKM heatmap"
-        pass
+
 
     ## rRNA_table
     try:

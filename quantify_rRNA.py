@@ -21,24 +21,24 @@ for DIR in DIR_tophat:
 	try:
 		countFile=commands.getoutput("ls "+DIR+"/*.counts")
 		totNum=commands.getoutput("awk '{SUM+=$2} END {print SUM}' "+countFile)
-		rRNAnum=0
-		Lines=open(countFile).readlines()
-		n=0
-		for line in Lines:
-			geneID=line.split()[0]
-			if geneID in rRNAgeneList:
-				n=n+1
-				num=int(line.split()[1])
-				rRNAnum=rRNAnum+num
-			
-		#print countFile.split('/')[-1].split('.')[0], rRNAnum, totNum
-		percent=round((float(rRNAnum)/int(totNum))*100,2)
-		outLine=countFile.split('/')[-1].split('.')[0]+'\t'+str(percent)+'%'+'\n'
-		outList.append(outLine)
-	except:
-		print "could not handle " + DIR
-		pass
-	
+		if totNum != '':
+			rRNAnum=0
+			Lines=open(countFile).readlines()
+			n=0
+			for line in Lines:
+				geneID=line.split()[0]
+				if geneID in rRNAgeneList:
+					n=n+1
+					num=int(line.split()[1])
+					rRNAnum=rRNAnum+num
+			percent=round((float(rRNAnum)/int(totNum))*100,2)
+			outLine=countFile.split('/')[-1].split('.')[0]+'\t'+str(percent)+'%'+'\n'
+			outList.append(outLine)
+        except:
+                print "could not handle " + DIR
+                pass	
+if outList==[]:
+	print 'No data found. Check count tables!'
 
 outF=open("rRNA.quantification",'w')
 outF.writelines(outList)
