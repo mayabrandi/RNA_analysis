@@ -42,7 +42,7 @@ M=`echo "100*${L}/(${F}+${G})"|bc -l|python -c "print round(float(raw_input()),2
 echo 'Sample' ${name}>tophat_out_${name}/stat_${name}
 echo 'tot_#_read_pairs' ${counts}>>tophat_out_${name}/stat_${name}
 echo '%_uniquely_mapped_reads' ${E}>>tophat_out_${name}/stat_${name}
-echo '%_uniquely_reads_left_after_dup_rem' ${I}>>tophat_out_${name}/stat_${name}
+echo '%_uniquely_mapped_reads_left_after_dup_rem' ${I}>>tophat_out_${name}/stat_${name}
 echo '#_uniquely_mapped_R1' ${C}>>tophat_out_${name}/stat_${name}
 echo '#_uniquely_mapped_R2' ${D}>>tophat_out_${name}/stat_${name}
 echo '#_uniquely_mapped_(dupRem)_R1' ${F}>>tophat_out_${name}/stat_${name}

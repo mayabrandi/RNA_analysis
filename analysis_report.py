@@ -302,7 +302,7 @@ def generate_report(proj_conf):
     ## Mapping Statistics
     tab = Texttable()
     tab.set_cols_dtype(['t','t','t','t'])
-    tab.add_row(['Sample','tot_#_read_pairs','%_mapped_reads','%_reads_left_after_dup_rem'])
+    tab.add_row(['Sample','tot_#_read_pairs','%_uniquely_mapped_reads','%_uniquely_mapped_reads_left_after_dup_rem'])
     try:
 	for sample_name in proj_conf['samples']:
 	    f=open('tophat_out_'+sample_name+'/stat_'+sample_name, 'r')
