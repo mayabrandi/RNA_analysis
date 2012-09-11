@@ -67,7 +67,6 @@ done
 run_dirs=($run_dirs)
 ## get sample names
 name_list=`for dir in ${run_dirs[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq`
-for dir in ${run_dirs[*]};do ls -d $dir/tophat_out_*;done
 names=`echo $name_list|sed -e 's/ /,/g'`
 DEPENDENCY_MERGE='afterok'
 DEPENDENCY_HT='afterok'
@@ -76,9 +75,10 @@ DEPENDENCY='afterok'
 if [ ${#run_dirs[*]} -gt 1 ];then
 	run_dir='merged'
 	## megre old and new samples
-	JOBID=`sbatch $WP/merge.sh $path | sed -re 's/.+\s+([0-9]+)/\1/'`
+	echo ${run_dirs[*]}
+	JOBID=`sbatch $WP/merge.sh -p $path ${run_dirs[*]}| sed -re 's/.+\s+([0-9]+)/\1/'`
 	DEPENDENCY_MERGE=$DEPENDENCY_MERGE:$JOBID
-
+ 	echo $DEPENDENCY_MERGE
 	## get names of samples to be merged
 	rerun=`for dir in ${run_dirs[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq -d`
 	## run HTseq and cufflinks on meged samples
@@ -87,7 +87,8 @@ if [ ${#run_dirs[*]} -gt 1 ];then
 		python $WP/make_HT_cuff.py $i $gtf_file $mail $path $config_file	
 		JOBID=`sbatch --dependency=$DEPENDENCY_MERGE "HT_cuff_$i.sh"| sed -re 's/.+\s+([0-9]+)/\1/'`
 		DEPENDENCY_HT=$DEPENDENCY_HT:$JOBID
-		done
+	done
+	echo $DEPENDENCY_HT
 	if [ $DEPENDENCY_HT = 'afterok' ]; then
 		dep=" --dependency=$DEPENDENCY_MERGE"
 	else 

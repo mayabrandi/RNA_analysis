@@ -10,28 +10,53 @@
 module load bioinfo-tools
 module load samtools
 
-path=$1
-gtf_path=$2
-flowcells=(`ls $path|grep hiseq2000`)
+while getopts ":p:g:m:c:" option; do
+        case ${option} in
+                p) path=${OPTARG};;
+                g) gtf_file=${OPTARG};;
+                m) mail=${OPTARG};;
+		c) config_file=${OPTARG};;
+        esac
+done
+shift $(( OPTIND - 1 ))
+
+flowcells=''
+for dir in "$@"; do
+        flowcells=$flowcells" "$dir
+done
+flowcells=($flowcells)
 nr_fc=${#flowcells[*]}
-name_list=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq`
+name_list=`for dir in ${flowcells[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq`
+echo ${flowcells[*]}
 
 if [ $nr_fc  -lt 2 -o $# -lt 1 ]; then
 echo "
 Usage:
-	merge.sh <path> [gtf file]
+	merge.sh -p <path> -g [gtf file] -m [mail] -c [config file]  <run dir 1> <run dir 2> ... <run dir N>
 
 Arguments:
 	<path> 
-	- Path to the intermediate directory containing the runs to be merged. The
-	script merges all directories with nameds containg 'hiseq2000'. 
+	- Path to the intermediate directory containing the runs to be merged
        	- eg: /proj/a2010002/projects/m_muurinen_11_01a/intermediate, containing 
 	the three runs: 20120127B_hiseq2000 20120228A_hiseq2000 20120328A_hiseq2000
+
+	[mail] 
+	- if you want to run cufflincs and HTseq on merged samples give your mail for SLURM
+	messages
+
+	[config_file]
+	- if you want to run cufflincs and HTseq on merged samples give config_file
+	specifying HTseq version
 
        	[gtf fie]
 	- Optional! If not given, the script will only merge, but not run cufflinks 
 	and HTseq on the merged data.
         - Reference annotation in gtf format, used by cufflinks and HTseq
+
+	<run dir i>
+	name of directories to merge, eg
+	120727_AD14B4ACXX 120727_BD1591ACXX 120823_BD16GRACXX
+	
 
 Output:
 	- A new directory for the merged data, called merged and placed in the intermediate directory.
@@ -98,40 +123,12 @@ else
         	done
         done	
 	fi
-	if [ "$gtf_path" != "" ]; then
+	if [ "$gtf_file" != "" ]; then
         ## get names of samples to be merged
-	rerun=`for dir in *hiseq2000/tophat_out_*; do echo ${dir##*out_};done|sort -n|uniq -d`	
+	rerun=`for dir in ${flowcells[*]};do ls -d $dir/tophat_out_*|cut -f 2 -d '/'|sed 's/tophat_out_//g';done|sort|uniq -d`
 	## run HTseq and cufflinks on meged samples
 	for i in ${rerun[*]};do
-        echo "#!/bin/bash -l">"HT_cuff_$i.sh"
-        echo "">>"HT_cuff_$i.sh"
-        echo "#SBATCH -A a2010003">>"HT_cuff_$i.sh"
-        echo "#SBATCH -p core">>"HT_cuff_$i.sh"
-        echo "#SBATCH -t 00:15:00">>"HT_cuff_$i.sh"
-        echo "#SBATCH -e HT_cuff_$i.err">>"HT_cuff_$i.sh"
-        echo "#SBATCH -o HT_cuff_$i.out">>"HT_cuff_$i.sh"
-        echo "#SBATCH -J HT_cuff_$i">>"HT_cuff_$i.sh"
-	echo "#SBATCH --qos=short">>"HT_cuff_$i.sh"
-        echo "#SBATCH --mail-type=ALL">>"HT_cuff_$i.sh"
-        echo "#SBATCH --mail-user=maya.brandi@scilifelab.se">>"HT_cuff_$i.sh"
-        echo "">>"HT_cuff_$i.sh"
-
-        echo "module unload htseq">>"HT_cuff_$i.sh"
-        echo "module load htseq/0.5.1">>"HT_cuff_$i.sh"
-        echo "module unload cufflinks">>"HT_cuff_$i.sh"
-        echo "module load cufflinks/1.2.1">>"HT_cuff_$i.sh"
-        echo "">>"HT_cuff_$i.sh"
-
-        echo "samtools view $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam |sort > $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
-        echo "samtools view $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam |sort > $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
-        echo "python -m HTSeq.scripts.count -s no -q $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam $gtf_path > $path/merged/tophat_out_$i/$i.counts">>"HT_cuff_$i.sh"
-        echo "rm $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_prehtseq_$i.sam">>"HT_cuff_$i.sh"
-        echo "samtools index $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam">>"HT_cuff_$i.sh"
-        echo "cufflinks -p 8 -G $gtf_path -o $path/merged/tophat_out_$i/cufflinks_out_$i $path/merged/tophat_out_$i/accepted_hits_sorted_dupRemoved_$i.bam">>"HT_cuff_$i.sh"
-	echo $i
-	echo "HT_cuff_$i.sh"
-
-        ##sbatch HT_cuff_$i.sh
+		python $WP/make_HT_cuff.py $i $gtf_file $mail $path/merged $config_file
         done
 	fi
 fi

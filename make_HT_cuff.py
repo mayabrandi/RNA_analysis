@@ -1,6 +1,5 @@
 import sys
 from bcbio.pipeline.config_loader import load_config
-print len(sys.argv)
 if len(sys.argv) < 6:
         print """
 Usage:
@@ -56,5 +55,5 @@ samtools view {1}/accepted_hits_sorted_dupRemoved_{0}.bam |sort > {1}/accepted_h
 python -m HTSeq.scripts.count -s no -q {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam {2} > {1}/{0}.counts
 rm {1}/accepted_hits_sorted_dupRemoved_prehtseq_{0}.sam
 samtools index {1}/accepted_hits_sorted_dupRemoved_{0}.bam
-cufflinks -p 8 -G {2} -o {1}/cufflinks_out_{0} $path/tophat_out_{0}/accepted_hits_sorted_dupRemoved_{0}.bam""".format(name, tophat_out_path, gtf_file, mail, quant, counts)
+cufflinks -p 8 -G {2} -o {1}/cufflinks_out_{0} {6}/tophat_out_{0}/accepted_hits_sorted_dupRemoved_{0}.bam""".format(name, tophat_out_path, gtf_file, mail, quant, counts,path)
 
