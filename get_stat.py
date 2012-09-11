@@ -36,21 +36,17 @@ F=$1
 G=$2
 H=`echo "100*($1+$2)/(${C}+${D})"|bc -l|python -c "print round(float(raw_input()),2)"`
 I=`echo "100*($1+$2)/(${counts}*2)"|bc -l|python -c "print round(float(raw_input()),2)"`
-J=`samtools view $arg |grep -c NH:i:1$`        
-K=`echo "100*${J}/(${F}+${G})"|bc -l|python -c "print round(float(raw_input()),2)"`        
 L=`samtools view $arg |cut -f6 |grep -c N`
 M=`echo "100*${L}/(${F}+${G})"|bc -l|python -c "print round(float(raw_input()),2)"`
 
 echo 'Sample' ${name}>tophat_out_${name}/stat_${name}
 echo 'tot_#_read_pairs' ${counts}>>tophat_out_${name}/stat_${name}
-echo '%_mapped_reads' ${E}>>tophat_out_${name}/stat_${name}
-echo '%_reads_left_after_dup_rem' ${I}>>tophat_out_${name}/stat_${name}
-echo '#_mapped_R1' ${C}>>tophat_out_${name}/stat_${name}
-echo '#_mapped_R2' ${D}>>tophat_out_${name}/stat_${name}
-echo '#_mapped_(dupRem)_R1' ${F}>>tophat_out_${name}/stat_${name}
-echo '#_mapped_(dupRem)_R2' ${G}>>tophat_out_${name}/stat_${name}
-echo '#_uniquely_mapped_(dupRem)' ${J}>>tophat_out_${name}/stat_${name}
-echo '%_uniquely_mapped' ${K}>>tophat_out_${name}/stat_${name}
+echo '%_uniquely_mapped_reads' ${E}>>tophat_out_${name}/stat_${name}
+echo '%_uniquely_reads_left_after_dup_rem' ${I}>>tophat_out_${name}/stat_${name}
+echo '#_uniquely_mapped_R1' ${C}>>tophat_out_${name}/stat_${name}
+echo '#_uniquely_mapped_R2' ${D}>>tophat_out_${name}/stat_${name}
+echo '#_uniquely_mapped_(dupRem)_R1' ${F}>>tophat_out_${name}/stat_${name}
+echo '#_uniquely_mapped_(dupRem)_R2' ${G}>>tophat_out_${name}/stat_${name}
 echo '#_spliced_alignments_(dupRem)' ${L}>> tophat_out_${name}/stat_${name}
 echo '%_spliced' ${M}>>tophat_out_${name}/stat_${name}
 
