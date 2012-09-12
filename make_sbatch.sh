@@ -46,7 +46,7 @@ sbatch RSeQC_${i}_rd.sh
 python $WP/make_RseqQc_gbc.py $i $bedfile $mail $config_file $path
 
 ## statistics
-python $WP/get_stat.py ${i}
+python $WP/get_stat.py ${i} mail
 sbatch ${i}_get_stat.sh
 
 done
@@ -61,7 +61,7 @@ echo "#SBATCH -t 15:00:00" >> quantify_rRNA.sh
 echo "#SBATCH -J quantify_rRNA" >> quantify_rRNA.sh
 echo "#SBATCH -e quantify_rRNA.err" >> quantify_rRNA.sh
 echo "#SBATCH -o quantify_rRNA.out" >> quantify_rRNA.sh
-echo "#SBATCH --mail-user maya.brandi@scilifelab.se" >> quantify_rRNA.sh
+echo "#SBATCH --mail-user $mail" >> quantify_rRNA.sh
 echo "#SBATCH --mail-type=ALL" >> quantify_rRNA.sh
 echo "cd $path
 python $WP/quantify_rRNA.py $gtf_file" >> quantify_rRNA.sh
@@ -78,7 +78,7 @@ echo "#SBATCH -t 01:00:00" >> correl.sh
 echo "#SBATCH -J correl" >> correl.sh
 echo "#SBATCH -e correl.err" >> correl.sh
 echo "#SBATCH -o correl.out" >> correl.sh
-echo "#SBATCH --mail-user maya.brandi@scilifelab.se" >> correl.sh
+echo "#SBATCH --mail-user $mail" >> correl.sh
 echo "#SBATCH --mail-type=ALL" >> correl.sh
 echo "cd $path
 R CMD BATCH '--args ${name_list[*]}' $WP/correl.R" >> correl.sh

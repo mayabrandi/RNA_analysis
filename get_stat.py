@@ -1,6 +1,20 @@
 import sys
 
-name=sys.argv[1]
+
+if len(sys.argv) < 3:        
+	print """
+Usage:
+
+get_stat.py  <sample name> <mail>
+
+        <sample name>           This name: /tophat_out_<sample name>
+        <mail>                  eg: maya.brandi@scilifelab.se
+        """
+        sys.exit()
+
+name	= sys.argv[1]
+mail	= sys.argv[2]
+
 f=open(name+"_get_stat.sh",'w')
 
 print >>f, """#! /bin/bash -l
@@ -8,10 +22,10 @@ print >>f, """#! /bin/bash -l
 #SBATCH -A a2010002
 #SBATCH -p core
 #SBATCH -t 2:00:00
-#SBATCH -J get_stat
+#SBATCH -J get_stat"""+ name + """
 #SBATCH -e get_stat"""+ name + """.err
 #SBATCH -o get_stat"""+ name + """.out
-#SBATCH --mail-user maya.brandi@scilifelab.se
+#SBATCH --mail-user """+ mail +"""
 #SBATCH --mail-type=ALL
 
 
