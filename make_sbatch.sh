@@ -46,7 +46,7 @@ sbatch RSeQC_${i}_rd.sh
 python $WP/make_RseqQc_gbc.py $i $bedfile $mail $config_file $path
 
 ## statistics
-python $WP/get_stat.py ${i} mail
+python $WP/get_stat.py ${i} $mail
 sbatch ${i}_get_stat.sh
 
 done
